@@ -1,0 +1,11 @@
+{
+  "match": ["ABPL", "Ample Bass P Lite"],
+  "instrument": "Ample Bass P Lite (sampled electric bass)",
+  "source": "Range found by rendering every note: 41 and above play at full level, 40 is very quiet, 13-39 are silent.",
+  "playable_range": {"low": 41, "high": 71, "note": "write bass lines from MIDI 41 up; the top of the range was not probed above 71"},
+  "tips": [
+    "The lowest usable note is F (41): for a song in E play the root at 52 instead of 40.",
+    "Do not send low keyswitch notes: nothing below 40 produces sound here.",
+    "Short eighth notes (about 0.4 beat) with alternating velocities give a driving picked line."
+  ]
+}

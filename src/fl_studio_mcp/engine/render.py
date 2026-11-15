@@ -120,8 +120,13 @@ def write_audio(path: Path, audio: Audio, sample_rate: int) -> None:
     from pedalboard.io import AudioFile
 
     path.parent.mkdir(parents=True, exist_ok=True)
+    clipped = np.clip(audio, -1.0, 1.0)
+    if path.suffix.lower() == ".mp3":
+        with AudioFile(str(path), "w", sample_rate, audio.shape[0], quality=320) as handle:
+            handle.write(clipped)
+        return
     with AudioFile(str(path), "w", sample_rate, audio.shape[0], bit_depth=24) as handle:
-        handle.write(np.clip(audio, -1.0, 1.0))
+        handle.write(clipped)
 
 
 def _parameter_text(parameter: Any) -> str:
@@ -349,7 +354,8 @@ class Renderer:
         for key in [k for k in self._loaded if k not in used]:
             del self._loaded[key]
 
-        path = out_dir / f"{project.name}_{stamp}.wav"
+        extension = "mp3" if options.get("format") == "mp3" else "wav"
+        path = out_dir / f"{project.name}_{stamp}.{extension}"
         write_audio(path, mix, rate)
         return {
             "path": str(path),

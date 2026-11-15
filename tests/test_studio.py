@@ -89,6 +89,14 @@ async def test_compose_render_and_export() -> None:
                              tail_seconds=0)
         assert section["analysis"]["duration_seconds"] == pytest.approx(2.0, abs=0.01)
 
+        mp3 = await call(client, "studio_render", project="demo", format="mp3")
+        assert mp3["path"].endswith(".mp3")
+        assert 20_000 < Path(mp3["path"]).stat().st_size < Path(result["path"]).stat().st_size
+        decoded = await call(client, "studio_analyze_audio", path=mp3["path"])
+        assert decoded["analysis"]["lufs_integrated"] == pytest.approx(
+            analysis["lufs_integrated"], abs=0.5
+        )
+
         again = await call(client, "studio_analyze_audio", path=result["path"])
         assert again["analysis"]["lufs_integrated"] == pytest.approx(
             analysis["lufs_integrated"], abs=0.3

@@ -108,7 +108,7 @@ The `studio_*` tools work without FL Studio and remove the limits of its scripti
 - **Built-in instruments** - `builtin:drums` (synthesized kit, General MIDI notes), `builtin:sampler` (your own one-shot samples), `builtin:sine`.
 - **Song timeline** - `studio_write_notes`, `studio_copy_notes` (repeat and transpose sections), `studio_get_notes`, `studio_delete_notes`. Positions are in beats, same note format as `fl_send_notes`.
 - **Mixing** - `studio_set_track_mix`, `studio_set_effects` (built-in EQ, compressor, reverb, delay, limiter... or VST3 effects) on tracks and the master bus, `studio_set_plugin_params`.
-- **Render and "listen"** - `studio_render` writes a WAV (optionally stems) and returns integrated loudness (LUFS, BS.1770), peak, clipping, loudness over time, energy per frequency band, stereo correlation and per-track levels. `studio_analyze_audio` does the same for any audio file.
+- **Render and "listen"** - `studio_render` writes a WAV or MP3 (optionally WAV stems) and returns integrated loudness (LUFS, BS.1770), peak, clipping, loudness over time, energy per frequency band, stereo correlation and per-track levels. `studio_analyze_audio` does the same for any audio file.
 - **Instrument profiles** - `studio_get_instrument_profile` returns the playable range, keyswitches and writing tips (Ample Guitar M is included).
 - **Hand over to FL Studio** - `studio_export_midi` (one file per track plus the whole song) or `studio_send_track_to_fl` (into the open piano roll).
 

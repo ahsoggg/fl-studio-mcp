@@ -642,8 +642,9 @@ def register_studio_tools(mcp: FastMCP) -> None:
         start_beat: float | None = None,
         end_beat: float | None = None,
         tail_seconds: float = 2.0,
+        format: str = "wav",
     ) -> dict:
-        """Render a project to a WAV file and analyse the result.
+        """Render a project to an audio file and analyse the result.
 
         This is how to "listen": the analysis reports integrated loudness (LUFS),
         peak level, clipping, loudness over time, energy per frequency band and
@@ -659,7 +660,10 @@ def register_studio_tools(mcp: FastMCP) -> None:
             start_beat: Render from this beat (default: the beginning)
             end_beat: Render up to this beat (default: the end)
             tail_seconds: Extra time after the last note for release and reverb tails
+            format: "wav" (24-bit) or "mp3" (320 kbps) for the mix; stems are always WAV
         """
+        if format not in ("wav", "mp3"):
+            raise ProjectError("format must be 'wav' or 'mp3'")
         current = store.load_project(project)
         if not 0 <= tail_seconds <= 30:
             raise ProjectError("tail_seconds must be between 0 and 30")
@@ -673,6 +677,7 @@ def register_studio_tools(mcp: FastMCP) -> None:
             "start_beat": start_beat,
             "end_beat": end_beat,
             "tail_seconds": tail_seconds,
+            "format": format,
         }
         result = get_engine().call("render", {"project": current.to_dict(), "options": options})
         assert isinstance(result, dict)

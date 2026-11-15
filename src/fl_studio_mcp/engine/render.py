@@ -28,7 +28,13 @@ from fl_studio_mcp.engine.model import (
     Project,
     Track,
 )
-from fl_studio_mcp.engine.plugins import binary_path
+from fl_studio_mcp.engine.plugins import (
+    AUDIO_EXTENSIONS,
+    PRESET_EXTENSIONS,
+    allowed_plugin_path,
+    binary_path,
+    local_file,
+)
 
 Audio = NDArray[np.float32]
 
@@ -104,9 +110,9 @@ def _fit(audio: NDArray[Any], n: int) -> Audio:
 def read_audio(path: str, sample_rate: int) -> NDArray[np.float32]:
     from pedalboard.io import AudioFile
 
-    if not Path(path).is_file():
-        raise RenderError(f"Sample file not found: {path}")
-    with AudioFile(path).resampled_to(sample_rate) as handle:
+    with AudioFile(local_file(path, AUDIO_EXTENSIONS, "Sample")).resampled_to(
+        sample_rate
+    ) as handle:
         return handle.read(handle.frames)
 
 
@@ -136,9 +142,8 @@ class Renderer:
         from pedalboard import load_plugin
 
         try:
-            return load_plugin(
-                binary_path(path), plugin_name=plugin_name, initialization_timeout=30.0
-            )
+            module = binary_path(allowed_plugin_path(path))
+            return load_plugin(module, plugin_name=plugin_name, initialization_timeout=30.0)
         except Exception as exc:
             raise RenderError(f"Could not load plugin {path}: {exc}") from exc
 
@@ -248,7 +253,8 @@ class Renderer:
                 )
             if fresh and track.preset:
                 try:
-                    plugin.load_preset(track.preset)
+                    preset = local_file(track.preset, PRESET_EXTENSIONS, "Preset")
+                    plugin.load_preset(preset)
                 except Exception as exc:
                     raise RenderError(
                         f"Track {track.name!r}: cannot load preset: {exc}"
@@ -358,9 +364,7 @@ class Renderer:
     def analyze_file(self, path: str) -> dict[str, Any]:
         from pedalboard.io import AudioFile
 
-        if not Path(path).is_file():
-            raise RenderError(f"Audio file not found: {path}")
-        with AudioFile(path) as handle:
+        with AudioFile(local_file(path, AUDIO_EXTENSIONS, "Audio file")) as handle:
             audio = handle.read(handle.frames)
             rate = int(handle.samplerate)
         return {"path": path, "analysis": analyze(audio, rate)}

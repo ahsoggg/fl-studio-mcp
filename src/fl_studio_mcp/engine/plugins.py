@@ -51,6 +51,56 @@ def scan_plugins() -> list[dict[str, str]]:
     return sorted(seen.values(), key=lambda p: p["name"].lower())
 
 
+AUDIO_EXTENSIONS = (".wav", ".flac", ".aif", ".aiff", ".mp3", ".ogg")
+PRESET_EXTENSIONS = (".vstpreset",)
+
+
+def _is_network_or_device(path: Path) -> bool:
+    text = str(path)
+    return text.startswith(("\\\\", "//")) or path.drive.startswith("\\\\")
+
+
+def local_file(path: str, extensions: tuple[str, ...], what: str) -> str:
+    """Resolve a caller-supplied path to an existing local file of an expected type.
+
+    Network shares and device paths are refused: opening one would send the
+    user's credentials to whatever host the path names.
+    """
+    candidate = Path(path)
+    if not candidate.is_absolute() or _is_network_or_device(candidate):
+        raise ProjectError(f"{what} must be an absolute path to a local file, got {path!r}")
+    if candidate.suffix.lower() not in extensions:
+        raise ProjectError(f"{what} must be one of {', '.join(extensions)}, got {path!r}")
+    try:
+        resolved = candidate.resolve(strict=True)
+    except OSError as exc:
+        raise ProjectError(f"{what} not found: {path}") from exc
+    if _is_network_or_device(resolved) or not resolved.is_file():
+        raise ProjectError(f"{what} must be a local file, got {path!r}")
+    return str(resolved)
+
+
+def allowed_plugin_path(path: str) -> str:
+    """Accept a plugin only if it lives in a VST3 search folder: plugins are native code."""
+    candidate = Path(path)
+    if candidate.suffix.lower() != ".vst3" or _is_network_or_device(candidate):
+        raise ProjectError(f"Not a local VST3 plugin path: {path!r}")
+    try:
+        resolved = candidate.resolve(strict=True)
+    except OSError as exc:
+        raise ProjectError(f"Plugin file not found: {path}") from exc
+    for root in vst3_search_paths():
+        try:
+            if not _is_network_or_device(resolved) and resolved.is_relative_to(root.resolve()):
+                return str(resolved)
+        except OSError:
+            continue
+    raise ProjectError(
+        f"Plugin {path!r} is outside the VST3 folders. Install it there or add its "
+        "folder to FL_MCP_VST3_PATHS."
+    )
+
+
 def is_builtin(spec: str) -> bool:
     return spec in BUILTIN_INSTRUMENTS
 
@@ -59,9 +109,7 @@ def resolve_plugin(spec: str) -> str:
     """Turn a plugin name or path into an absolute .vst3 path."""
     candidate = Path(spec)
     if candidate.suffix.lower() == ".vst3" and candidate.is_absolute():
-        if not candidate.exists():
-            raise ProjectError(f"Plugin file not found: {spec}")
-        return str(candidate)
+        return allowed_plugin_path(spec)
     plugins = scan_plugins()
     wanted = spec.lower().removesuffix(".vst3")
     for plugin in plugins:

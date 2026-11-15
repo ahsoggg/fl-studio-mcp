@@ -31,7 +31,14 @@ from fl_studio_mcp.engine.model import (
     Track,
     validate_name,
 )
-from fl_studio_mcp.engine.plugins import is_builtin, resolve_plugin, scan_plugins
+from fl_studio_mcp.engine.plugins import (
+    AUDIO_EXTENSIONS,
+    PRESET_EXTENSIONS,
+    is_builtin,
+    local_file,
+    resolve_plugin,
+    scan_plugins,
+)
 from fl_studio_mcp.engine.profiles import find_profile
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -309,6 +316,13 @@ def register_studio_tools(mcp: FastMCP) -> None:
         """
         validate_name(name)
         spec = plugin
+        if preset is not None:
+            preset = local_file(preset, PRESET_EXTENSIONS, "Preset")
+        checked_samples: dict[str, str] = {}
+        for note, sample in (samples or {}).items():
+            if not note.isdigit() or not 0 <= int(note) <= 127:
+                raise ProjectError(f"Sample keys must be MIDI note numbers 0-127, got {note!r}")
+            checked_samples[str(int(note))] = local_file(sample, AUDIO_EXTENSIONS, "Sample")
         if is_builtin(plugin):
             if samples and plugin != BUILTIN_SAMPLER:
                 raise ProjectError("samples are only used by builtin:sampler")
@@ -329,7 +343,7 @@ def register_studio_tools(mcp: FastMCP) -> None:
                 name=name,
                 plugin=spec,
                 preset=preset,
-                samples=dict(samples or {}),
+                samples=checked_samples,
             )
             current.tracks.append(track)
             summary = _track_summary(current, track)
@@ -672,7 +686,8 @@ def register_studio_tools(mcp: FastMCP) -> None:
         Args:
             path: Absolute path to the audio file
         """
-        result = get_engine().call("analyze", {"path": path})
+        checked = local_file(path, AUDIO_EXTENSIONS, "Audio file")
+        result = get_engine().call("analyze", {"path": checked})
         assert isinstance(result, dict)
         return result
 

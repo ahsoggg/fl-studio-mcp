@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -68,3 +69,43 @@ def test_find_track_by_id_or_name() -> None:
     assert project.next_track_id() == "t3"
     with pytest.raises(ProjectError):
         project.find_track("drums")
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        r"\\evil-host\share\kick.wav",
+        "//evil-host/share/kick.wav",
+        r"\\?\C:\Windows\system.wav",
+        r"\\.\pipe\thing.wav",
+        "relative/kick.wav",
+        "C:/Windows/win.ini",
+    ],
+)
+def test_network_device_and_wrong_type_paths_are_refused(path: str) -> None:
+    from fl_studio_mcp.engine.plugins import AUDIO_EXTENSIONS, local_file
+
+    with pytest.raises(ProjectError):
+        local_file(path, AUDIO_EXTENSIONS, "Sample")
+
+
+def test_plugins_load_only_from_vst3_folders(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fl_studio_mcp.engine.plugins import allowed_plugin_path, resolve_plugin
+
+    root = tmp_path / "vst3"
+    inside = root / "Vendor" / "Synth.vst3"
+    inside.parent.mkdir(parents=True)
+    inside.write_bytes(b"")
+    outside = tmp_path / "Downloads" / "Evil.vst3"
+    outside.parent.mkdir()
+    outside.write_bytes(b"")
+    monkeypatch.setenv("FL_MCP_VST3_PATHS", str(root))
+
+    assert allowed_plugin_path(str(inside)) == str(inside.resolve())
+    assert resolve_plugin("synth") == str(inside)
+    with pytest.raises(ProjectError, match="outside the VST3 folders"):
+        resolve_plugin(str(outside))
+    with pytest.raises(ProjectError):
+        allowed_plugin_path(r"\\evil-host\share\Evil.vst3")

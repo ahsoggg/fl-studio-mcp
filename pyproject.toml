@@ -28,6 +28,8 @@ dependencies = [
     "mido>=1.3.0",
     "python-rtmidi>=1.5.0",
     "pynput>=1.7",
+    "pedalboard>=0.9.16",
+    "numpy>=1.26",
 ]
 
 [project.optional-dependencies]
@@ -55,6 +57,9 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.8",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100

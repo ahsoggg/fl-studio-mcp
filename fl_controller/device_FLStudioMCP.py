@@ -88,6 +88,7 @@ def OnIdle():
 def execute_pending_command():
     """Read command from JSON file, execute it, and write response."""
     response = {"success": False, "error": None}
+    request_id = None
 
     try:
         # Read command file
@@ -99,6 +100,7 @@ def execute_pending_command():
         command_text = COMMAND_FILE.read_text()
         command = json.loads(command_text)
 
+        request_id = command.get("id")
         action = command.get("action", "")
         params = command.get("params", {})
 
@@ -111,15 +113,29 @@ def execute_pending_command():
     except Exception as e:
         response["error"] = f"Error executing command: {e}"
 
+    # Echo the request id so the server can match the response to its command
+    if request_id is not None:
+        response["id"] = request_id
+
     write_response(response)
 
 
 def write_response(response: dict):
-    """Write response to JSON file."""
+    """Write response to JSON file.
+
+    The file is written under a temporary name and then renamed, so the MCP
+    server never reads a half-written response.
+    """
+    text = json.dumps(response, indent=2)
+    tmp_file = RESPONSE_FILE.with_name(RESPONSE_FILE.name + ".tmp")
     try:
-        RESPONSE_FILE.write_text(json.dumps(response, indent=2))
-    except Exception as e:
-        print(f"Error writing response: {e}")
+        tmp_file.write_text(text)
+        os.replace(tmp_file, RESPONSE_FILE)
+    except Exception:
+        try:
+            RESPONSE_FILE.write_text(text)
+        except Exception as e:
+            print(f"Error writing response: {e}")
 
 
 def dispatch_command(action: str, params: dict) -> dict:

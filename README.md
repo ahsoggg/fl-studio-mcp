@@ -15,6 +15,7 @@
 - [Demo](#demo)
 - [Features](#features)
 - [Limitations](#limitations)
+- [Studio Engine](#studio-engine)
 - [Requirements](#requirements)
 - [Quick Installation](#quick-installation)
 - [Manual Installation](#manual-installation)
@@ -93,9 +94,27 @@ https://github.com/user-attachments/assets/c2b1a5e7-1640-41fa-82bc-18ca7cbae9e8
 
 ## Limitations
 
-> **Cannot load plugins** — The FL Studio scripting API does not support loading new VST/AU plugins. You can only control parameters of plugins that are already loaded in your project.
+> **Cannot load plugins inside FL Studio** — The FL Studio scripting API does not support loading new VST/AU plugins. You can only control parameters of plugins that are already loaded in your project.
 
 > **No pattern management (yet)** — The server can write notes and step-sequencer steps into a pattern, but it has no tools to create, switch, rename, or clone patterns. Everything goes into whichever pattern is currently selected in FL Studio, so pick or create the pattern yourself before asking for notes. (FL Studio's scripting API does support this through the `patterns` module, so it could be added.)
+
+---
+
+## Studio Engine
+
+The `studio_*` tools work without FL Studio and remove the limits of its scripting API. The server hosts installed **VST3 instruments and effects itself**, so an assistant can pick any installed plugin, arrange a whole song on a timeline, render it to WAV and read an analysis of the result.
+
+- **Any installed VST3** - `studio_list_plugins`, `studio_get_plugin_info`. Each plugin is first loaded in a throwaway process; plugins that crash headless are reported as unusable instead of taking the server down.
+- **Built-in instruments** - `builtin:drums` (synthesized kit, General MIDI notes), `builtin:sampler` (your own one-shot samples), `builtin:sine`.
+- **Song timeline** - `studio_write_notes`, `studio_copy_notes` (repeat and transpose sections), `studio_get_notes`, `studio_delete_notes`. Positions are in beats, same note format as `fl_send_notes`.
+- **Mixing** - `studio_set_track_mix`, `studio_set_effects` (built-in EQ, compressor, reverb, delay, limiter... or VST3 effects) on tracks and the master bus, `studio_set_plugin_params`.
+- **Render and "listen"** - `studio_render` writes a WAV (optionally stems) and returns integrated loudness (LUFS, BS.1770), peak, clipping, loudness over time, energy per frequency band, stereo correlation and per-track levels. `studio_analyze_audio` does the same for any audio file.
+- **Instrument profiles** - `studio_get_instrument_profile` returns the playable range, keyswitches and writing tips (Ample Guitar M is included).
+- **Hand over to FL Studio** - `studio_export_midi` (one file per track plus the whole song) or `studio_send_track_to_fl` (into the open piano roll).
+
+Projects, renders and MIDI exports are stored in `Documents/FL Studio MCP` (override with `FL_MCP_STUDIO_DIR`). Extra VST3 folders can be added with `FL_MCP_VST3_PATHS`.
+
+**Limits:** VST3 only (FL Studio's native plugins such as Sytrus or FPC are not available outside FL Studio), one tempo per project, and no `.flp` export - use the MIDI export to continue in FL Studio. Some plugins do not survive headless loading; a few load and play but cannot have their parameters changed.
 
 ---
 

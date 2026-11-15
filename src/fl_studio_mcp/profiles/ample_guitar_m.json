@@ -1,0 +1,44 @@
+{
+  "match": ["AGM", "Ample Guitar M"],
+  "instrument": "Ample Guitar M (sampled acoustic guitar)",
+  "source": "Ample Guitar M Main Panel Manual; the manual names middle C as C3, so its C0 is MIDI 24. Range 40-84 and the Palm Mute keyswitch (26) were confirmed by rendering; the other numbers follow the manual with the same octave offset.",
+  "playable_range": {"low": 40, "high": 84, "note": "E1-C5 in the manual; notes outside are silent"},
+  "open_strings": [40, 45, 50, 55, 59, 64],
+  "keyswitches": [
+    {"midi": 24, "name": "Sustain & Pop", "note": "velocity below 1.0 = sustain, velocity 1.0 = pop"},
+    {"midi": 25, "name": "Natural Harmonic", "range": [52, 84]},
+    {"midi": 26, "name": "Palm Mute", "note": "lower velocity of the played note = deeper mute"},
+    {"midi": 27, "name": "Slide In & Slide Out", "range": [42, 84], "note": "press before a note = slide in, press while a note sounds = slide out; reverts to sustain"},
+    {"midi": 28, "name": "Legato Slide", "range": [41, 84], "note": "then play two overlapping notes; reverts afterwards"},
+    {"midi": 29, "name": "Hammer-On & Pull-Off", "note": "then play two overlapping notes; reverts afterwards"},
+    {"midi": 30, "name": "Slide Guitar", "range": [42, 84]}
+  ],
+  "controls": [
+    {"midi": [31, 36], "name": "String force", "note": "31 = 6th string ... 36 = 1st string. A note that cannot be played on the forced string stays silent, so avoid these unless intended."},
+    {"midi": 37, "name": "Position assign", "note": "press, then a note 40-56 selects the fret position"},
+    {"midi": 98, "name": "Note repeater"},
+    {"midi": 99, "name": "Auto legato", "note": "high velocity = automatic slide, low = automatic hammer-on/pull-off"},
+    {"midi": 104, "name": "Open string first", "note": "high velocity on, low velocity off"},
+    {"midi": 107, "name": "Position mode", "note": "low velocity = melody mode, high velocity = chord mode"}
+  ],
+  "fx_sounds": [
+    {"midi": 89, "name": "Scratch"},
+    {"midi": 90, "name": "Slap"},
+    {"midi": 91, "name": "Muting"},
+    {"midi": 92, "name": "Strum Mute"},
+    {"midi": 93, "name": "Downstroke Noise 1"},
+    {"midi": 94, "name": "Upstroke Noise 1"},
+    {"midi": 95, "name": "Downstroke Noise 2"},
+    {"midi": 96, "name": "Upstroke Noise 2"},
+    {"midi": 101, "name": "Hit Top (Open)"},
+    {"midi": 102, "name": "Hit Top (Mute)"},
+    {"midi": 103, "name": "Hit Rim"}
+  ],
+  "tips": [
+    "Articulation keyswitches latch and survive between renders: start every guitar track with an explicit keyswitch note (midi 24 for sustain) at time 0.",
+    "Place a keyswitch slightly before the first note it should affect (about 0.05 beat) and keep it short (0.1 beat).",
+    "Strum chords by staggering the chord notes 0.02-0.05 beat apart: low to high for a downstroke, high to low for an upstroke, with small velocity differences.",
+    "Use real guitar voicings (at most 6 notes, one per string); the default play mode enforces one note per string.",
+    "Pressing two articulation keyswitches together combines them: 24 + 26 gives sustain on loud notes and palm mute on soft notes."
+  ]
+}

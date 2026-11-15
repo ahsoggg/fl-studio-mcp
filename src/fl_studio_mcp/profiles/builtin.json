@@ -1,0 +1,28 @@
+{
+  "builtin:sine": {
+    "instrument": "Built-in sine synth: a plain placeholder tone that always works",
+    "playable_range": {"low": 0, "high": 127},
+    "tips": ["Use it to sketch a part, then switch the track to a real plugin."]
+  },
+  "builtin:drums": {
+    "instrument": "Built-in synthesized drum kit (General MIDI note layout)",
+    "drum_map": {
+      "36": "kick", "37": "rimshot", "38": "snare", "39": "clap",
+      "42": "closed hi-hat", "46": "open hi-hat",
+      "41": "low tom", "45": "mid tom", "48": "high tom",
+      "49": "crash", "51": "ride"
+    },
+    "tips": [
+      "Note length is ignored: every hit plays its full sound.",
+      "Vary hi-hat velocities (0.4-0.9) to avoid a mechanical feel.",
+      "For realistic drums use builtin:sampler with your own one-shot samples."
+    ]
+  },
+  "builtin:sampler": {
+    "instrument": "Built-in one-shot sampler: maps MIDI notes to audio files",
+    "tips": [
+      "Pass samples as {\"36\": \"C:/path/kick.wav\", \"38\": \"C:/path/snare.wav\"} when adding the track.",
+      "Each note plays its whole file once; note length and pitch are ignored."
+    ]
+  }
+}

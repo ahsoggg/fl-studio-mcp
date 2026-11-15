@@ -13,8 +13,11 @@ instead of keystrokes.
 
 from __future__ import annotations
 
+import itertools
 import json
+import os
 import platform
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -51,6 +54,8 @@ class MIDIConnection:
         self._port_name: str | None = None
         self._connected = False
         self._error: str | None = None
+        self._lock = threading.Lock()
+        self._request_ids = itertools.count(1)
 
         # File paths for JSON communication
         self._hardware_dir = _get_fl_hardware_dir()
@@ -160,76 +165,92 @@ class MIDIConnection:
         Raises:
             RuntimeError: If not connected or command fails
         """
-        self.ensure_connected()
+        # One command at a time: the bridge shares a single command/response file pair.
+        with self._lock:
+            self.ensure_connected()
 
-        # Prepare command
-        command = {
-            "action": action,
-            "params": params or {},
-        }
+            request_id = f"{os.getpid()}-{next(self._request_ids)}"
+            command = {
+                "id": request_id,
+                "action": action,
+                "params": params or {},
+            }
 
-        # Write command to file
-        try:
-            self._command_file.write_text(json.dumps(command, indent=2))
-        except Exception as e:
-            return {"success": False, "error": f"Failed to write command file: {e}"}
-
-        # Clear old response file
-        if self._response_file.exists():
+            # Clear old response file
             try:
-                self._response_file.unlink()
-            except Exception:
+                self._response_file.unlink(missing_ok=True)
+            except OSError:
                 pass
 
-        # Send MIDI trigger
-        try:
-            import mido
-            trigger_msg = mido.Message("note_on", note=self.TRIGGER_NOTE, velocity=127)
-            self._port.send(trigger_msg)
-        except Exception as e:
-            return {"success": False, "error": f"Failed to send MIDI trigger: {e}"}
+            # Write the command atomically so FL Studio never reads half a file
+            try:
+                tmp_file = self._command_file.with_name(self._command_file.name + ".tmp")
+                tmp_file.write_text(json.dumps(command, indent=2))
+                os.replace(tmp_file, self._command_file)
+            except Exception as e:
+                return {"success": False, "error": f"Failed to write command file: {e}"}
 
-        # Wait for response
-        return self._wait_for_response(timeout)
+            # Send MIDI trigger
+            try:
+                import mido
+                trigger_msg = mido.Message("note_on", note=self.TRIGGER_NOTE, velocity=127)
+                self._port.send(trigger_msg)
+            except Exception as e:
+                return {"success": False, "error": f"Failed to send MIDI trigger: {e}"}
 
-    def _wait_for_response(self, timeout: float) -> dict[str, Any]:
-        """Wait for response file to appear and read it.
+            # Wait for response
+            return self._wait_for_response(timeout, request_id)
+
+    def _wait_for_response(self, timeout: float, request_id: str | None = None) -> dict[str, Any]:
+        """Wait for the response file to appear and read it.
+
+        A file that cannot be parsed yet is treated as still being written and is
+        read again until the timeout. A response that carries the id of another
+        request is stale and is discarded.
 
         Args:
             timeout: Maximum time to wait in seconds
+            request_id: Id of the command this response must belong to
 
         Returns:
             Response dictionary or error dict if timeout
         """
-        start_time = time.time()
+        deadline = time.monotonic() + timeout
         poll_interval = 0.02  # 20ms between checks
+        read_error: str | None = None
 
-        while time.time() - start_time < timeout:
+        while time.monotonic() < deadline:
             if self._response_file.exists():
                 try:
-                    response_text = self._response_file.read_text()
-                    response = json.loads(response_text)
+                    response = json.loads(self._response_file.read_text())
+                except (json.JSONDecodeError, OSError) as e:
+                    read_error = str(e)
+                    time.sleep(poll_interval)
+                    continue
 
-                    # Clean up response file
-                    try:
-                        self._response_file.unlink()
-                    except Exception:
-                        pass
+                # Clean up response file
+                try:
+                    self._response_file.unlink(missing_ok=True)
+                except OSError:
+                    pass
 
+                if not isinstance(response, dict):
+                    return {"success": False, "error": "Invalid response from FL Studio"}
+                response_id = response.pop("id", None)
+                if request_id is None or response_id is None or response_id == request_id:
                     return response
-                except json.JSONDecodeError as e:
-                    return {"success": False, "error": f"Invalid JSON in response: {e}"}
-                except Exception as e:
-                    return {"success": False, "error": f"Failed to read response: {e}"}
+                time.sleep(poll_interval)
+                continue
 
             time.sleep(poll_interval)
 
+        detail = f" Last read error: {read_error}." if read_error else ""
         return {
             "success": False,
             "error": (
                 f"Timeout waiting for FL Studio response after {timeout}s. "
                 "Make sure FL Studio is running and the MCP controller is enabled "
-                "in MIDI Settings."
+                f"in MIDI Settings.{detail}"
             ),
         }
 

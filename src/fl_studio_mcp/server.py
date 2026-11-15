@@ -25,6 +25,7 @@ from fl_studio_mcp.tools import (
     register_mixer_tools,
     register_piano_roll_tools,
     register_plugin_tools,
+    register_studio_tools,
     register_transport_tools,
 )
 from fl_studio_mcp.utils.connection import get_connection, reset_connection
@@ -44,7 +45,16 @@ Available tool categories:
 - Channels: Channel info, note triggering, step sequencer
 - Plugins: Parameter control, preset navigation (cannot load new plugins)
 
-Important limitations:
+Studio engine (studio_* tools) - works without FL Studio running:
+- Hosts installed VST3 instruments and effects itself, so any installed plugin can be used
+- Arrange a whole song on a beat timeline, render it to WAV and read the audio
+  analysis (loudness, peaks, spectrum) to judge and improve the result
+- Typical flow: studio_list_plugins -> studio_create_project -> studio_add_track ->
+  studio_get_instrument_profile -> studio_write_notes / studio_copy_notes ->
+  studio_render -> adjust with studio_set_track_mix / studio_set_effects -> render again
+- Hand over to FL Studio with studio_export_midi or studio_send_track_to_fl
+
+Important limitations of the fl_* tools (FL Studio's own scripting API):
 1. Cannot load new VST/AU plugins - only control existing ones
 2. Cannot create new patterns programmatically
 3. Note triggering (fl_trigger_note) is real-time only - notes won't persist
@@ -140,6 +150,7 @@ register_mixer_tools(mcp)
 register_channel_tools(mcp)
 register_plugin_tools(mcp)
 register_piano_roll_tools(mcp)
+register_studio_tools(mcp)
 
 
 def main():
